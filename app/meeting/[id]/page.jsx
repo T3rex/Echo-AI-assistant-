@@ -1,20 +1,22 @@
 "use client";
+
+import { useEffect, useState } from "react";
+import { useSearchParams, useRouter, useParams } from "next/navigation";
 import StreamProvider from "@/app/components/stream-provider";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import MeetingRoom from "@/app/components/meeting-room";
 import { StreamTheme } from "@stream-io/video-react-sdk";
 
-const MeetingPage = () => {
-  const searchParams = useSearchParams();
+export default function MeetingPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const callId = params.id;
   const name = searchParams.get("name") || "anonymous";
 
   const [user, setUser] = useState(null);
-  const [error, setError] = useState(null);
   const [token, setToken] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     setUser({
@@ -28,29 +30,32 @@ const MeetingPage = () => {
 
     fetch("/api/token", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: user.id }),
     })
       .then((res) => res.json())
-      .then((data) => setToken(data.token))
-      .catch((err) => setError(err));
+      .then((data) => {
+        if (data.token) setToken(data.token);
+        else setError("No token returned");
+      })
+      .catch((err) => setError(err.message));
   }, [user]);
+
+  const handleLeave = () => {
+    router.push("/");
+  };
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
-        <div className="p-8 bg-gray-800/60 rounded-2xl border border-gray-700 w-80 backdrop-blur-sm shadow-2xl">
-          <h2 className="text-xl font-semibold mb-4 text-center text-red-500">
-            Failed to join the meeting. Please try again.
-          </h2>
-          <p>{error.message}</p>
+      <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white">
+        <div className="p-6 bg-red-900/20 border border-red-500 rounded-lg">
+          <p className="text-red-500 font-bold text-lg mb-2">Error</p>
+          <p>{error}</p>
           <button
             onClick={() => router.push("/")}
-            className="mt-5 w-full py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium shadow-lg transition"
+            className="mt-4 px-4 py-2 bg-red-500 rounded-lg hover:bg-red-600"
           >
-            Go Back
+            Back
           </button>
         </div>
       </div>
@@ -59,21 +64,20 @@ const MeetingPage = () => {
 
   if (!token || !user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
-        <div className="p-8 bg-gray-800/60 rounded-2xl border border-gray-700 w-80 backdrop-blur-sm shadow-2xl">
-          <h2 className="text-xl font-semibold mb-4 text-center">
-            Joining the meeting...
-          </h2>
+      <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-lg">Connecting…</p>
         </div>
       </div>
     );
   }
 
   return (
-    <StreamProvider token={token} user={user}>
-      <StreamTheme>Meeting Room</StreamTheme>
+    <StreamProvider user={user} token={token}>
+      <StreamTheme>
+        <MeetingRoom callId={callId} onLeave={handleLeave} userId={user.id} />
+      </StreamTheme>
     </StreamProvider>
   );
-};
-
-export default MeetingPage;
+}

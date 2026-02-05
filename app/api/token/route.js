@@ -25,10 +25,12 @@ export async function POST(request) {
     await serverClient.upsertUsers([newUser]);
 
     // Generate token valid for 24 hours
+    const iat = Math.floor(Date.now() / 1000);
     const validity = 24 * 60 * 60;
     const token = serverClient.generateUserToken({
       user_id: userId,
       validity_in_seconds: validity,
+      iat: iat - 60,
     });
 
     return Response.json({ token });
